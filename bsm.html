@@ -1,0 +1,2216 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+  <meta charset="UTF-8">
+  <title>Saobraćajne nezgode i opasna mjesta – Kanton Sarajevo</title>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      color: #111827;
+      background: #0f172a;
+    }
+
+    header {
+      padding: 12px 20px;
+      background: #020617;
+      color: #f9fafb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid #1f2937;
+    }
+    header h1 {
+      font-size: 20px;
+      margin: 0;
+      font-weight: 600;
+    }
+    header small {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+    #map {
+      flex: 1;
+      height: 100%;
+    }
+
+    aside {
+      width: 380px;
+      max-width: 100%;
+      background: #020617;
+      border-left: 1px solid #1f2937;
+      display: flex;
+      flex-direction: column;
+      color: #e5e7eb;
+    }
+
+    .sidebar-inner {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .tab-nav {
+      display: flex;
+      border-bottom: 1px solid #1f2937;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 8px 10px;
+      background: transparent;
+      border: none;
+      color: #9ca3af;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .tab-btn span.emoji {
+      font-size: 14px;
+    }
+    .tab-btn.active {
+      color: #f9fafb;
+      background: linear-gradient(to right, #0f172a, #111827);
+      border-bottom: 2px solid #3b82f6;
+    }
+
+    .tab-panels {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    .tab-panel {
+      display: none;
+    }
+    .tab-panel.active {
+      display: block;
+    }
+
+    .panel {
+      background: #020617;
+      border-radius: 10px;
+      padding: 8px 10px;
+      border: 1px solid #1f2937;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .panel h2 {
+      margin: 0 0 4px;
+      font-size: 14px;
+      color: #f9fafb;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .panel h2 span.emoji {
+      font-size: 15px;
+    }
+    .panel p {
+      margin: 2px 0;
+      color: #d1d5db;
+    }
+    .stat {
+      display: flex;
+      justify-content: space-between;
+    }
+    code {
+      background: #111827;
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #e5e7eb;
+    }
+
+    .status {
+      font-size: 12px;
+    }
+    .status strong { color: #f9fafb; }
+
+    .btn-row {
+      margin-top: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
+    button {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    button.primary {
+      background: #2563eb;
+      color: #f9fafb;
+    }
+    button.primary:hover {
+      background: #1d4ed8;
+    }
+    button.secondary {
+      background: #4b5563;
+      color: #f9fafb;
+    }
+    button.secondary:hover {
+      background: #6b7280;
+    }
+    button.ghost {
+      background: #111827;
+      color: #e5e7eb;
+    }
+    button.ghost:hover {
+      background: #1f2937;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+      color: #e5e7eb;
+    }
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1px solid #020617;
+    }
+    .swatch-all { background: #3b82f6; }
+    .swatch-c1 { background: #ef4444; }
+    .swatch-c2 { background: #f97316; }
+    .swatch-h1 { background: #000000; }
+    .swatch-h2 { background: #4c1d95; }
+
+    .toggle-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .toggle-row label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      color: #e5e7eb;
+    }
+    .toggle-row input[type="checkbox"] {
+      accent-color: #2563eb;
+    }
+
+    .filter-section-title {
+      margin: 6px 0 3px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #9ca3af;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .filter-full {
+      grid-column: 1 / -1;
+    }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .filter-group label {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    select, input[type="text"], input[type="number"], input[type="date"] {
+      width: 100%;
+      padding: 3px 5px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 1px solid #374151;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    select:focus, input:focus {
+      outline: 1px solid #3b82f6;
+    }
+
+    #stats-description {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+
+    #opcine-list {
+      max-height: 150px;
+      overflow-y: auto;
+      border-radius: 6px;
+      padding: 4px 6px;
+      background: #020617;
+      border: 1px solid #1f2937;
+      margin-top: 4px;
+    }
+    #opcine-list label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      margin-bottom: 2px;
+      color: #e5e7eb;
+    }
+
+    .measure-info {
+      font-size: 12px;
+      color: #d1d5db;
+      margin-top: 4px;
+    }
+
+    /* Popup box – veći i bez overflowa */
+    .leaflet-popup-content-wrapper {
+      background: #f9fafb;
+      border-radius: 18px;
+      box-shadow: 0 14px 30px rgba(15,23,42,0.55);
+      border: 1px solid #d1d5db;
+      overflow: hidden;
+      max-width: 420px;
+    }
+    .leaflet-popup-content {
+      margin: 10px 12px;
+    }
+    .popup-card {
+      max-width: 100%;
+      font-size: 15px;
+      color: #111827;
+      word-wrap: break-word;
+    }
+    .popup-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .popup-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      background: #fee2e2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      border: 1px solid #fecaca;
+      flex-shrink: 0;
+    }
+    .popup-title {
+      font-weight: 700;
+      font-size: 16px;
+    }
+    .popup-subtitle {
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .popup-separator {
+      border: none;
+      border-top: 1px solid #e5e7eb;
+      margin: 8px 0;
+    }
+    .popup-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 16px;
+      margin-top: 4px;
+    }
+    .popup-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #4b5563;
+      margin-bottom: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .popup-row {
+      font-size: 13px;
+      color: #374151;
+      margin-bottom: 2px;
+    }
+    .popup-row strong {
+      font-weight: 600;
+    }
+    .popup-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .badge {
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .badge-injury {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .badge-death {
+      background: #0f172a;
+      color: #f9fafb;
+    }
+    .badge-participants {
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+    .popup-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .popup-coords {
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    .popup-sv-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      background: linear-gradient(90deg,#2563eb,#1d4ed8);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      box-shadow: 0 6px 16px rgba(37,99,235,0.45);
+      white-space: normal;
+      text-align: left;
+    }
+    .popup-sv-btn span.icon {
+      font-size: 15px;
+    }
+    .popup-sv-btn:hover {
+      filter: brightness(1.05);
+      text-decoration: none;
+    }
+
+    .popup-extra {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    /* Stats modal */
+    #stats-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .stats-modal-content {
+      background: #020617;
+      border-radius: 12px;
+      width: 92%;
+      max-width: 900px;
+      max-height: 90vh;
+      padding: 12px;
+      overflow-y: auto;
+      border: 1px solid #1f2937;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      color: #e5e7eb;
+    }
+    .stats-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .stats-header h2 {
+      margin: 0;
+      font-size: 16px;
+    }
+    #stats-chart-container {
+      background: #020617;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      padding: 8px;
+      margin-top: 8px;
+    }
+    #stats-chart {
+      width: 100% !important;
+      max-height: 380px;
+    }
+    .stats-note {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 6px;
+    }
+    .stats-metric-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .stats-metric-btn {
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid #374151;
+      background: #020617;
+      color: #d1d5db;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .stats-metric-btn.active {
+      background: #2563eb;
+      color: #f9fafb;
+      border-color: #2563eb;
+    }
+
+    .stats-download-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: flex-end;
+      margin-top: 6px;
+    }
+
+    /* Banner za aktivne filtere na dnu ekrana */
+    #filter-banner {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15,23,42,0.94);
+      color: #e5e7eb;
+      padding: 6px 12px;
+      font-size: 12px;
+      border-top: 1px solid #1f2937;
+      display: none;
+      z-index: 900;
+    }
+    #filter-banner strong { color: #f9fafb; }
+
+    @media (max-width: 900px) {
+      aside { width: 320px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Saobraćajne nezgode i opasna mjesta – Kanton Sarajevo</h1>
+      <small>Analiza saobraćajnih nezgoda 2022–2024. Pilot interaktivna web mapa.</small>
+    </div>
+  </header>
+
+  <main>
+    <div id="map"></div>
+
+    <aside>
+      <div class="sidebar-inner">
+        <div class="tab-nav">
+          <button class="tab-btn active" data-tab="pregled"><span class="emoji">📍</span>Pregled</button>
+          <button class="tab-btn" data-tab="filteri"><span class="emoji">🎛️</span>Filteri</button>
+          <button class="tab-btn" data-tab="alati"><span class="emoji">🧩</span>Alati &amp; analize</button>
+        </div>
+
+        <div class="tab-panels">
+          <!-- TAB PREGLED -->
+          <div class="tab-panel active" id="tab-pregled">
+            <div class="panel">
+              <h2><span class="emoji">ℹ️</span>Status</h2>
+              <p class="status" id="status-text">
+                Učitavam CSV <code>SN_22-24_webapp.csv</code>...
+              </p>
+            </div>
+
+            <div class="panel">
+              <h2><span class="emoji">📊</span>Brzi pregled</h2>
+              <p class="stat"><span>Ukupno SN (filtrirano):</span><span id="stat-total">–</span></p>
+              <p class="stat"><span>SN sa povredama:</span><span id="stat-injury">–</span></p>
+              <p class="stat"><span>SN u klasterima:</span><span id="stat-candidate">–</span></p>
+              <hr style="border:none;border-top:1px solid #1f2937;margin:4px 0;">
+              <p class="stat"><span>Klastera (kriterij 1):</span><span id="stat-h6">–</span></p>
+              <p class="stat"><span>Klastera (kriterij 2):</span><span id="stat-h4">–</span></p>
+              <p id="stats-description">
+                Prikazane su sve saobraćajne nezgode bez dodatnih filtera.
+              </p>
+              <div class="btn-row">
+                <button class="primary" id="btn-show-stats">📈 Statistika</button>
+              </div>
+            </div>
+
+            <div class="panel">
+              <h2><span class="emoji">🗺️</span>Legenda i slojevi</h2>
+              <div class="legend-item">
+                <div class="legend-swatch swatch-all"></div>
+                <span>Sve nezgode (plavo)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-swatch swatch-c1"></div>
+                <span>SN u opasnom mjestu – kriterij 1 (crveno)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-swatch swatch-c2"></div>
+                <span>SN u opasnom mjestu – kriterij 2 (narančasto)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-swatch swatch-h1"></div>
+                <span>Centar opasnog mjesta – kriterij 1 (crno)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-swatch swatch-h2"></div>
+                <span>Centar opasnog mjesta – kriterij 2 (tamno ljubičasto)</span>
+              </div>
+
+              <div class="toggle-row" style="margin-top:6px;">
+                <label><input type="checkbox" id="toggle-h1" checked>Prikaži opasna mjesta – kriterij 1</label>
+                <label><input type="checkbox" id="toggle-h2" checked>Prikaži opasna mjesta – kriterij 2</label>
+                <label><input type="checkbox" id="toggle-heat">Heatmap – gustina nezgoda</label>
+                <label><input type="checkbox" id="toggle-roads">Putevi (roads_ks.geojson)</label>
+                <label><input type="checkbox" id="toggle-kanton">Granice Kantona i općina (opcine.geojson)</label>
+              </div>
+
+              <div class="filter-group" style="margin-top:8px;">
+                <label>Općine (uključi/isključi)</label>
+                <div id="opcine-list">
+                  <span style="font-size:11px;color:#6b7280;">Učitavanje općina...</span>
+                </div>
+              </div>
+
+              <div class="filter-group" style="margin-top:8px;">
+                <label for="jump-select">Brzi skok (zoom na područje / opasno mjesto)</label>
+                <select id="jump-select">
+                  <option value="">(odaberi...)</option>
+                  <option value="all">Cijeli Kanton – sve SN</option>
+                  <option value="core">Centar Sarajeva</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="panel">
+              <h2><span class="emoji">📄</span>Napomena</h2>
+              <p>Aplikacija koristi fajlove:</p>
+              <ul style="margin:4px 0 0 14px;padding:0;font-size:12px;color:#d1d5db;">
+                <li><code>SN_22-24_webapp.csv</code> – saobraćajne nezgode</li>
+                <li><code>roads_ks.geojson</code> – putna mreža</li>
+                <li><code>opcine.geojson</code> – granice općina i Kantona</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- TAB FILTERI -->
+          <div class="tab-panel" id="tab-filteri">
+            <div class="panel">
+              <h2><span class="emoji">🎚️</span>Filteri (važe i za statistike i DBSCAN)</h2>
+
+              <div class="filter-section-title">Vrijeme</div>
+              <div class="filter-grid">
+                <div class="filter-group">
+                  <label for="filter-date-from">Datum od</label>
+                  <input type="date" id="filter-date-from">
+                </div>
+                <div class="filter-group">
+                  <label for="filter-date-to">Datum do</label>
+                  <input type="date" id="filter-date-to">
+                </div>
+                <div class="filter-group">
+                  <label for="filter-dow">Dan u sedmici</label>
+                  <select id="filter-dow">
+                    <option value="">(svi)</option>
+                    <option value="1">Ponedjeljak</option>
+                    <option value="2">Utorak</option>
+                    <option value="3">Srijeda</option>
+                    <option value="4">Četvrtak</option>
+                    <option value="5">Petak</option>
+                    <option value="6">Subota</option>
+                    <option value="7">Nedjelja</option>
+                  </select>
+                </div>
+                <div class="filter-group">
+                  <label for="filter-hour-from">Sat od (0–23)</label>
+                  <input type="number" id="filter-hour-from" min="0" max="23" placeholder="">
+                </div>
+                <div class="filter-group">
+                  <label for="filter-hour-to">Sat do (0–23)</label>
+                  <input type="number" id="filter-hour-to" min="0" max="23" placeholder="">
+                </div>
+                <div class="filter-group filter-full">
+                  <label for="filter-daynight">Dan / Noć (prema vremenu nezgode)</label>
+                  <select id="filter-daynight">
+                    <option value="">(oba)</option>
+                    <option value="Dan">Dan</option>
+                    <option value="Noć">Noć</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="filter-section-title">Lokacija</div>
+              <div class="filter-grid">
+                <div class="filter-group filter-full">
+                  <label for="filter-podrucje">Područje</label>
+                  <select id="filter-podrucje"><option value="">(sve)</option></select>
+                </div>
+              </div>
+
+              <div class="filter-section-title">Putevi i geometrija</div>
+              <div class="filter-grid">
+                <div class="filter-group">
+                  <label for="filter-tip-puta">Tip puta</label>
+                  <select id="filter-tip-puta"><option value="">(sve)</option></select>
+                </div>
+                <div class="filter-group">
+                  <label for="filter-kat-puta">Kategorija puta</label>
+                  <select id="filter-kat-puta"><option value="">(sve)</option></select>
+                </div>
+                <div class="filter-group">
+                  <label for="filter-horiz-geo">Horizontalna geometrija</label>
+                  <select id="filter-horiz-geo"><option value="">(sve)</option></select>
+                </div>
+                <div class="filter-group">
+                  <label for="filter-vert-geo">Vertikalna geometrija</label>
+                  <select id="filter-vert-geo"><option value="">(sve)</option></select>
+                </div>
+                <div class="filter-group">
+                  <label for="filter-tip-raskrsnice">Tip raskrsnice</label>
+                  <select id="filter-tip-raskrsnice"><option value="">(sve)</option></select>
+                </div>
+                <div class="filter-group">
+                  <label for="filter-tip-prelaza">Tip prelaza</label>
+                  <select id="filter-tip-prelaza"><option value="">(sve)</option></select>
+                </div>
+              </div>
+
+              <div class="filter-section-title">Uslovi i površine</div>
+              <div class="filter-grid">
+                <div class="filter-group">
+                  <label for="filter-vremenske">Vremenske prilike</label>
+                  <select id="filter-vremenske"><option value="">(sve)</option></select>
+                </div>
+                <div class="filter-group">
+                  <label for="filter-kolovoz">Stanje kolovoza</label>
+                  <select id="filter-kolovoz"><option value="">(sve)</option></select>
+                </div>
+                <div class="filter-group">
+                  <label for="filter-pjesaci">Pješačka površina</label>
+                  <select id="filter-pjesaci"><option value="">(sve)</option></select>
+                </div>
+                <div class="filter-group">
+                  <label for="filter-rasvjeta">Rasvjeta</label>
+                  <select id="filter-rasvjeta"><option value="">(sve)</option></select>
+                </div>
+              </div>
+
+              <div class="filter-section-title">Posljedice i učesnici</div>
+              <div class="filter-grid">
+                <div class="filter-group">
+                  <label for="filter-min-povr">Min. povrijeđenih</label>
+                  <input type="number" id="filter-min-povr" min="0">
+                </div>
+                <div class="filter-group">
+                  <label for="filter-max-povr">Maks. povrijeđenih</label>
+                  <input type="number" id="filter-max-povr" min="0">
+                </div>
+                <div class="filter-group">
+                  <label for="filter-min-mrtvi">Min. poginulih</label>
+                  <input type="number" id="filter-min-mrtvi" min="0">
+                </div>
+                <div class="filter-group">
+                  <label for="filter-max-mrtvi">Maks. poginulih</label>
+                  <input type="number" id="filter-max-mrtvi" min="0">
+                </div>
+                <div class="filter-group filter-full">
+                  <label for="filter-uc">Učesnici (tekst)</label>
+                  <input type="text" id="filter-uc" placeholder="npr. pješak, bicikl...">
+                </div>
+              </div>
+
+              <div class="btn-row">
+                <button class="secondary" id="btn-clear-filters">Obriši filtere</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB ALATI -->
+          <div class="tab-panel" id="tab-alati">
+            <div class="panel">
+              <h2><span class="emoji">📏</span>Mjerenje udaljenosti</h2>
+              <button class="primary" id="btn-measure">Pokreni / resetuj mjerenje</button>
+              <p class="measure-info" id="measure-info">
+                Klikni na mapu da dodaš tačke rute. Udaljenosti se sabiraju duž linije.
+              </p>
+            </div>
+
+            <div class="panel">
+              <h2><span class="emoji">📈</span>Statistike i izvoz</h2>
+              <p>Statistički prikazi i export se uvijek odnose na <strong>trenutno filtrirane</strong> nezgode.</p>
+              <div class="btn-row">
+                <button class="primary" id="btn-show-stats-2">📈 Otvori statistiku</button>
+                <button class="ghost" id="btn-export-accidents">⬇ Export nezgoda (CSV)</button>
+                <button class="ghost" id="btn-export-stats">⬇ Export statistike (CSV)</button>
+              </div>
+            </div>
+
+            <div class="panel">
+              <h2><span class="emoji">🧠</span>Kako čitati rezultate</h2>
+              <p style="font-size:12px;">
+                Klasteri su određeni DBSCAN algoritmom na osnovu vazdušne udaljenosti (haversin), sa pragom od 100 m.
+                Kriterij 1 traži najmanje 6 SN sa povrijeđenim ili poginulim, dok kriterij 2 traži najmanje 4 SN istog
+                tipa na 100 m.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Banner sa aktivnim filterima -->
+  <div id="filter-banner"></div>
+
+  <!-- MODAL STATISTIKA -->
+  <div id="stats-modal">
+    <div class="stats-modal-content">
+      <div class="stats-header">
+        <h2>Statistika trenutno filtriranih saobraćajnih nezgoda</h2>
+        <button class="secondary" id="btn-close-stats">Zatvori</button>
+      </div>
+
+      <div style="font-size:13px;margin-bottom:4px;">
+        Odaberite jednu statistiku za prikaz (pojedinačni graf):
+      </div>
+      <div class="stats-metric-buttons" id="stats-metric-buttons">
+        <button class="stats-metric-btn active" data-metric="tip">Tip nezgode</button>
+        <button class="stats-metric-btn" data-metric="dow">Dan u sedmici</button>
+        <button class="stats-metric-btn" data-metric="hour">Sat u danu</button>
+        <button class="stats-metric-btn" data-metric="tipputa">Tip puta</button>
+        <button class="stats-metric-btn" data-metric="katputa">Kat. puta</button>
+        <button class="stats-metric-btn" data-metric="diodana">Dan / Noć</button>
+        <button class="stats-metric-btn" data-metric="kolovoz">Stanje kolovoza</button>
+        <button class="stats-metric-btn" data-metric="povrede">Povrede/poginuli</button>
+        <button class="stats-metric-btn" data-metric="ucesnici">Broj učesnika</button>
+        <button class="stats-metric-btn" data-metric="vozila">Vrste vozila</button>
+      </div>
+
+      <div id="stats-chart-container">
+        <canvas id="stats-chart"></canvas>
+      </div>
+
+      <div class="stats-download-row">
+        <span style="flex:1;font-size:11px;color:#9ca3af;align-self:center;">Preuzmi generisani graf:</span>
+        <button class="ghost" id="btn-save-png">PNG</button>
+        <button class="ghost" id="btn-save-jpg">JPG</button>
+        <button class="ghost" id="btn-save-pdf">PDF</button>
+      </div>
+
+      <p class="stats-note">
+        Svi prikazi se odnose na nezgode koje su trenutno vidljive na mapi (nakon primjene filtera).
+      </p>
+    </div>
+  </div>
+
+  <!-- JS biblioteke -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+  <script>
+    const CSV_URL = "SN_22-24_webapp.csv";
+
+    const EPS_6 = 100;
+    const MINPTS_6 = 6;
+    const EPS_4 = 100;
+    const MINPTS_4 = 4;
+
+    const DOW_NAMES = ["","Ponedjeljak","Utorak","Srijeda","Četvrtak","Petak","Subota","Nedjelja"];
+
+    let map;
+
+    let accidentsAll = [];
+    let accidents = [];
+    let accidentsInjury = [];
+    let csvHeadersAll = [];
+
+    let allAccidentsLayer;
+    let candidateAccidentsLayer;
+    let hazard6Layer;
+    let hazard4Layer;
+
+    let roadsLayer;
+    let roadsLoaded = false;
+
+    let cantonBoundaryLayer = L.layerGroup();
+    let opcinaLayers = {};
+    let opcineDataLoaded = false;
+    let muniBoundsByName = {};
+
+    let hazardCenters6 = [];
+    let hazardCenters4 = [];
+
+    let heatLayer = null;
+
+    let showH1 = true;
+    let showH2 = true;
+
+    let measuringActive = false;
+    let measurePoints = [];
+    let measurePolyline = null;
+    let measureMarkers = [];
+
+    const measureInfo = document.getElementById("measure-info");
+    const statusText = document.getElementById("status-text");
+    const statTotal = document.getElementById("stat-total");
+    const statInjury = document.getElementById("stat-injury");
+    const statCandidate = document.getElementById("stat-candidate");
+    const statH6 = document.getElementById("stat-h6");
+    const statH4 = document.getElementById("stat-h4");
+    const statsDescription = document.getElementById("stats-description");
+    const filterBanner = document.getElementById("filter-banner");
+
+    const toggleH1 = document.getElementById("toggle-h1");
+    const toggleH2 = document.getElementById("toggle-h2");
+    const toggleHeat = document.getElementById("toggle-heat");
+    const toggleRoads = document.getElementById("toggle-roads");
+    const toggleKanton = document.getElementById("toggle-kanton");
+    const jumpSelect = document.getElementById("jump-select");
+    const opcineListDiv = document.getElementById("opcine-list");
+
+    // Filter elementi
+    const fDateFrom = document.getElementById("filter-date-from");
+    const fDateTo   = document.getElementById("filter-date-to");
+    const fDow      = document.getElementById("filter-dow");
+    const fHourFrom = document.getElementById("filter-hour-from");
+    const fHourTo   = document.getElementById("filter-hour-to");
+    const fDayNight = document.getElementById("filter-daynight");
+
+    const fPodrucje = document.getElementById("filter-podrucje");
+    const fTipPuta = document.getElementById("filter-tip-puta");
+    const fKatPuta = document.getElementById("filter-kat-puta");
+    const fHorizGeo = document.getElementById("filter-horiz-geo");
+    const fVertGeo = document.getElementById("filter-vert-geo");
+    const fTipRask = document.getElementById("filter-tip-raskrsnice");
+    const fTipPrel = document.getElementById("filter-tip-prelaza");
+    const fVremenske = document.getElementById("filter-vremenske");
+    const fKolovoz = document.getElementById("filter-kolovoz");
+    const fPjesaci = document.getElementById("filter-pjesaci");
+    const fRasvjeta = document.getElementById("filter-rasvjeta");
+    const fMinPovr = document.getElementById("filter-min-povr");
+    const fMaxPovr = document.getElementById("filter-max-povr");
+    const fMinMrtvi = document.getElementById("filter-min-mrtvi");
+    const fMaxMrtvi = document.getElementById("filter-max-mrtvi");
+    const fUc = document.getElementById("filter-uc");
+
+    const btnClearFilters = document.getElementById("btn-clear-filters");
+    const btnMeasure = document.getElementById("btn-measure");
+    const btnShowStats = document.getElementById("btn-show-stats");
+    const btnShowStats2 = document.getElementById("btn-show-stats-2");
+    const btnExportAccidents = document.getElementById("btn-export-accidents");
+    const btnExportStats = document.getElementById("btn-export-stats");
+
+    const statsModal = document.getElementById("stats-modal");
+    const btnCloseStats = document.getElementById("btn-close-stats");
+    const statsMetricButtons = document.getElementById("stats-metric-buttons");
+    const btnSavePng = document.getElementById("btn-save-png");
+    const btnSaveJpg = document.getElementById("btn-save-jpg");
+    const btnSavePdf = document.getElementById("btn-save-pdf");
+    let statsChart = null;
+    let statsDataCache = null;
+    let statsSummaryRows = [];
+    let currentMetric = "tip";
+
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    const tabPanels = document.querySelectorAll(".tab-panel");
+    tabButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.tab;
+        tabButtons.forEach(b => b.classList.toggle("active", b === btn));
+        tabPanels.forEach(p => p.classList.toggle("active", p.id === "tab-" + tab));
+      });
+    });
+
+    function setStatus(text, isError = false) {
+      console.log("STATUS:", text);
+      statusText.innerHTML = (isError ? "⚠️ " : "ℹ️ ") + text;
+      statusText.style.color = isError ? "#fca5a5" : "#e5e7eb";
+    }
+
+    function normalizeType(str) {
+      return (str || "")
+        .toString()
+        .normalize("NFKC")
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function haversineMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const toRad = x => x * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function extractHourFromTimeStr(t) {
+      if (!t) return null;
+      const s = t.toString();
+      const m = s.match(/(\d{1,2}):(\d{2})/);
+      if (!m) return null;
+      const h = parseInt(m[1], 10);
+      if (isNaN(h) || h < 0 || h > 23) return null;
+      return h;
+    }
+
+    function parseDateFlexible(str) {
+      if (!str) return null;
+      const s = str.toString().trim();
+      if (!s) return null;
+      let d = new Date(s);
+      if (!isNaN(d.getTime())) return d;
+      const parts = s.split(".");
+      if (parts.length === 3) {
+        const [dd, mm, yy] = parts.map(p => p.trim());
+        const day = parseInt(dd,10);
+        const month = parseInt(mm,10) - 1;
+        let year = parseInt(yy,10);
+        if (year < 100) year += 2000;
+        d = new Date(year, month, day);
+        if (!isNaN(d.getTime())) return d;
+      }
+      return null;
+    }
+
+    function dbscan(points, epsMeters, minPts) {
+      const n = points.length;
+      const UNCLASSIFIED = 0;
+      const NOISE = -1;
+      const labels = new Array(n).fill(UNCLASSIFIED);
+      let clusterId = 0;
+
+      function regionQuery(i) {
+        const neighbors = [];
+        const p = points[i];
+        for (let j = 0; j < n; j++) {
+          const q = points[j];
+          const d = haversineMeters(p.lat, p.lon, q.lat, q.lon);
+          if (d <= epsMeters) neighbors.push(j);
+        }
+        return neighbors;
+      }
+
+      function expandCluster(i, neighbors, clusterId) {
+        labels[i] = clusterId;
+        for (let k = 0; k < neighbors.length; k++) {
+          const j = neighbors[k];
+          if (labels[j] === NOISE) labels[j] = clusterId;
+          if (labels[j] !== UNCLASSIFIED) continue;
+          labels[j] = clusterId;
+          const neighbors2 = regionQuery(j);
+          if (neighbors2.length >= minPts) {
+            neighbors = neighbors.concat(neighbors2);
+          }
+        }
+      }
+
+      for (let i = 0; i < n; i++) {
+        if (labels[i] !== UNCLASSIFIED) continue;
+        const neighbors = regionQuery(i);
+        if (neighbors.length < minPts) {
+          labels[i] = NOISE;
+        } else {
+          clusterId++;
+          expandCluster(i, neighbors, clusterId);
+        }
+      }
+      return { labels, clustersCount: clusterId };
+    }
+
+    function buildAccidentPopup(a, extraHtml = "") {
+      const r = a.raw || {};
+      const date = r["Datum"] || "";
+      const time = r["Vrijeme"] || "";
+      const area = r["Područje"] || "";
+      const tipPuta = r["Tip puta"] || "";
+      const katPuta = r["Kategorija puta"] || "";
+      const dioDana = a.dayNight || "";
+      const kolovoz = r["Stanje kolovoza"] || "";
+      const rasvjeta = r["Rasvjeta"] || "";
+      const horiz = r["Horizontalna geometrija"] || "";
+      const vert = r["Vertikalna geometrija"] || "";
+      const typeLabel = a.typeRaw || "Saobraćajna nezgoda";
+
+      const streetUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${a.lat},${a.lon}`;
+
+      return `
+        <div class="popup-card">
+          <div class="popup-header">
+            <div class="popup-icon">💥</div>
+            <div>
+              <div class="popup-title">${typeLabel}</div>
+              <div class="popup-subtitle">
+                ${date || "Datum nepoznat"} • ${time || "Vrijeme nepoznato"}${area ? " • " + area : ""}
+              </div>
+            </div>
+          </div>
+          <hr class="popup-separator" />
+          <div class="popup-grid">
+            <div>
+              <div class="popup-section-title">Put i geometrija</div>
+              ${tipPuta ? `<div class="popup-row"><strong>Tip puta:</strong> ${tipPuta}</div>` : ""}
+              ${katPuta ? `<div class="popup-row"><strong>Kategorija:</strong> ${katPuta}</div>` : ""}
+              ${horiz ? `<div class="popup-row"><strong>Horiz. geometrija:</strong> ${horiz}</div>` : ""}
+              ${vert ? `<div class="popup-row"><strong>Vert. geometrija:</strong> ${vert}</div>` : ""}
+            </div>
+            <div>
+              <div class="popup-section-title">Uslovi</div>
+              ${dioDana ? `<div class="popup-row"><strong>Dio dana:</strong> ${dioDana}</div>` : ""}
+              ${kolovoz ? `<div class="popup-row"><strong>Kolovoz:</strong> ${kolovoz}</div>` : ""}
+              ${rasvjeta ? `<div class="popup-row"><strong>Rasvjeta:</strong> ${rasvjeta}</div>` : ""}
+            </div>
+          </div>
+          <hr class="popup-separator" />
+          <div class="popup-badges">
+            <span class="badge badge-injury">🩺 Povrede: ${a.injuryTotal}</span>
+            <span class="badge badge-death">⚰ Poginuli: ${a.deaths}</span>
+            <span class="badge badge-participants">👥 Učesnika (procjena): ${a.participantsCount}</span>
+          </div>
+          ${extraHtml ? `<div class="popup-extra">${extraHtml}</div>` : ""}
+          <div class="popup-footer">
+            <a class="popup-sv-btn" href="${streetUrl}" target="_blank" rel="noopener">
+              <span class="icon">🧭</span>
+              <span>Otvori Street View</span>
+            </a>
+            <span class="popup-coords">${a.lat.toFixed(5)}, ${a.lon.toFixed(5)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function buildHazardPopup(cluster, idx, kriterijLabel) {
+      const lat = cluster.centerLat;
+      const lon = cluster.centerLon;
+      const streetUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lon}`;
+      return `
+        <div class="popup-card">
+          <div class="popup-header">
+            <div class="popup-icon">⚠️</div>
+            <div>
+              <div class="popup-title">Opasno mjesto – ${kriterijLabel} #${idx + 1}</div>
+              <div class="popup-subtitle">
+                ${cluster.totalAccidents} SN • ${cluster.totalInjured} povrijeđenih/poginulih
+              </div>
+            </div>
+          </div>
+          <hr class="popup-separator" />
+          <div class="popup-row"><strong>Dominantni tip SN:</strong> ${cluster.dominantType || "N/A"}</div>
+          <div class="popup-row"><strong>Koordinate centra:</strong> ${lat.toFixed(5)}, ${lon.toFixed(5)}</div>
+          <div class="popup-extra">
+            Klikom na pojedinačne nezgode u okolini dobit ćete detalje o svakoj nezgodi u ovom opasnom mjestu.
+          </div>
+          <div class="popup-footer">
+            <a class="popup-sv-btn" href="${streetUrl}" target="_blank" rel="noopener">
+              <span class="icon">🧭</span>
+              <span>Street View – opasno mjesto</span>
+            </a>
+            <span class="popup-coords">${lat.toFixed(5)}, ${lon.toFixed(5)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function initMap() {
+      map = L.map("map").setView([43.86, 18.41], 12);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors",
+      }).addTo(map);
+
+      const adminPane = map.createPane("adminPane");
+      adminPane.style.zIndex = 340;
+
+      const roadsPane = map.createPane("roadsPane");
+      roadsPane.style.zIndex = 350;
+
+      allAccidentsLayer = L.layerGroup().addTo(map);
+      candidateAccidentsLayer = L.layerGroup().addTo(map);
+      hazard6Layer = L.layerGroup().addTo(map);
+      hazard4Layer = L.layerGroup().addTo(map);
+
+      roadsLayer = L.layerGroup();
+
+      map.on("click", onMapClickMeasure);
+    }
+
+    initMap();
+
+    function getFilterSummaryText() {
+      const parts = [];
+      let filtered = false;
+
+      if (fDateFrom.value) {
+        parts.push(`datum ≥ ${fDateFrom.value}`);
+        filtered = true;
+      }
+      if (fDateTo.value) {
+        parts.push(`datum ≤ ${fDateTo.value}`);
+        filtered = true;
+      }
+      if (fDow.value) {
+        const idx = parseInt(fDow.value, 10);
+        parts.push(`dan = ${DOW_NAMES[idx]}`);
+        filtered = true;
+      }
+      if (fHourFrom.value !== "") {
+        parts.push(`sat ≥ ${fHourFrom.value}`);
+        filtered = true;
+      }
+      if (fHourTo.value !== "") {
+        parts.push(`sat ≤ ${fHourTo.value}`);
+        filtered = true;
+      }
+      if (fDayNight.value) {
+        parts.push(`dio dana = ${fDayNight.value}`);
+        filtered = true;
+      }
+
+      function addSel(sel, label) {
+        if (sel.value) {
+          parts.push(`${label} = „${sel.value}“`);
+          filtered = true;
+        }
+      }
+      addSel(fPodrucje,"područje");
+      addSel(fTipPuta,"tip puta");
+      addSel(fKatPuta,"kategorija puta");
+      addSel(fHorizGeo,"horizontalna geometrija");
+      addSel(fVertGeo,"vertikalna geometrija");
+      addSel(fTipRask,"tip raskrsnice");
+      addSel(fTipPrel,"tip prelaza");
+      addSel(fVremenske,"vremenske prilike");
+      addSel(fKolovoz,"stanje kolovoza");
+      addSel(fPjesaci,"pješačka površina");
+      addSel(fRasvjeta,"rasvjeta");
+
+      const minP = fMinPovr.value !== "" ? Number(fMinPovr.value) : null;
+      const maxP = fMaxPovr.value !== "" ? Number(fMaxPovr.value) : null;
+      if (minP !== null || maxP !== null) {
+        filtered = true;
+        if (minP !== null && maxP !== null) parts.push(`broj povrijeđenih ${minP}–${maxP}`);
+        else if (minP !== null) parts.push(`broj povrijeđenih ≥ ${minP}`);
+        else parts.push(`broj povrijeđenih ≤ ${maxP}`);
+      }
+
+      const minM = fMinMrtvi.value !== "" ? Number(fMinMrtvi.value) : null;
+      const maxM = fMaxMrtvi.value !== "" ? Number(fMaxMrtvi.value) : null;
+      if (minM !== null || maxM !== null) {
+        filtered = true;
+        if (minM !== null && maxM !== null) parts.push(`broj poginulih ${minM}–${maxM}`);
+        else if (minM !== null) parts.push(`broj poginulih ≥ ${minM}`);
+        else parts.push(`broj poginulih ≤ ${maxM}`);
+      }
+
+      if (fUc.value) {
+        parts.push(`učesnici sadrže „${fUc.value}“`);
+        filtered = true;
+      }
+
+      const totalAll = accidentsAll.length || 0;
+      const totalFiltered = accidents.length || 0;
+
+      if (!filtered) {
+        const text = `Nema aktivnih filtera. Prikazane su sve nezgode (${totalFiltered} od ukupno ${totalAll}).`;
+        return { text, filtered: false };
+      }
+
+      const text = `Aktivni filteri: ${parts.join(", ")}. Prikazano nezgoda: ${totalFiltered} od ukupno ${totalAll}.`;
+      return { text, filtered: true };
+    }
+
+    function updateStatsPanel() {
+      statTotal.textContent = accidents.length || "0";
+      statInjury.textContent = accidentsInjury.length || "0";
+
+      const candidates = accidentsInjury.filter(a =>
+        (a.cluster6 && a.cluster6 > 0) || (a.cluster4 && a.cluster4 > 0)
+      ).length;
+      statCandidate.textContent = candidates || "0";
+
+      const clusterIds6 = new Set();
+      const clusterIds4 = new Set();
+      accidentsInjury.forEach(a => {
+        if (a.cluster6 && a.cluster6 > 0) clusterIds6.add(a.cluster6);
+        if (a.cluster4 && a.cluster4 > 0) clusterIds4.add(a.cluster4);
+      });
+
+      statH6.textContent = clusterIds6.size || "0";
+      statH4.textContent = clusterIds4.size || "0";
+
+      const info = getFilterSummaryText();
+      statsDescription.textContent = info.text;
+      filterBanner.textContent = info.text;
+      filterBanner.style.display = info.filtered ? "block" : "none";
+    }
+
+    function drawBaseAccidents() {
+      allAccidentsLayer.clearLayers();
+      const latlngs = [];
+      accidents.forEach(a => {
+        const latlng = [a.lat, a.lon];
+        latlngs.push(latlng);
+        L.circleMarker(latlng, {
+          radius: 5,
+          color: "#1d4ed8",
+          fillColor: "#3b82f6",
+          fillOpacity: 0.9,
+          weight: 1,
+        })
+        .bindPopup(buildAccidentPopup(a))
+        .addTo(allAccidentsLayer);
+      });
+
+      if (latlngs.length > 0 && !map._initialFitDone) {
+        map.fitBounds(L.latLngBounds(latlngs), { padding: [20,20] });
+        map._initialFitDone = true;
+      }
+    }
+
+    function summarizeClusters(accList, key) {
+      const m = new Map();
+      accList.forEach(a => {
+        const cid = a[key];
+        if (!cid || cid <= 0) return;
+        if (!m.has(cid)) m.set(cid, []);
+        m.get(cid).push(a);
+      });
+
+      const out = [];
+      m.forEach((list, cid) => {
+        const latSum = list.reduce((s, a) => s + a.lat, 0);
+        const lonSum = list.reduce((s, a) => s + a.lon, 0);
+        const centerLat = latSum / list.length;
+        const centerLon = lonSum / list.length;
+        const totalInj = list.reduce((s, a) => s + a.injuryTotal, 0);
+
+        const typeCounts = {};
+        const labels = {};
+        list.forEach(a => {
+          const k = a.typeKey || "unknown";
+          typeCounts[k] = (typeCounts[k] || 0) + 1;
+          if (!labels[k] && a.typeRaw) labels[k] = a.typeRaw;
+        });
+
+        let dominantKey = "";
+        let maxCount = 0;
+        Object.entries(typeCounts).forEach(([k,c]) => {
+          if (c > maxCount) {
+            maxCount = c;
+            dominantKey = k;
+          }
+        });
+        const dominantLabel = labels[dominantKey] || dominantKey || "N/A";
+
+        out.push({
+          id: cid,
+          centerLat,
+          centerLon,
+          accidents: list,
+          totalAccidents: list.length,
+          totalInjured: totalInj,
+          dominantType: dominantLabel
+        });
+      });
+      return out;
+    }
+
+    function rebuildJumpOptions() {
+      const sel = jumpSelect;
+      const current = sel.value;
+      while (sel.options.length > 3) sel.remove(3);
+
+      Object.keys(muniBoundsByName).sort().forEach(name => {
+        const o = document.createElement("option");
+        o.value = "muni:" + name;
+        o.textContent = "Općina: " + name;
+        sel.appendChild(o);
+      });
+
+      hazardCenters6.forEach((h, idx) => {
+        const o = document.createElement("option");
+        o.value = "h1:" + idx;
+        o.textContent = `Opasno mjesto K1 #${idx+1}`;
+        sel.appendChild(o);
+      });
+      hazardCenters4.forEach((h, idx) => {
+        const o = document.createElement("option");
+        o.value = "h2:" + idx;
+        o.textContent = `Opasno mjesto K2 #${idx+1}`;
+        sel.appendChild(o);
+      });
+
+      if ([...sel.options].some(o => o.value === current)) sel.value = current;
+    }
+
+    function drawDbscanResults() {
+      candidateAccidentsLayer.clearLayers();
+      hazard6Layer.clearLayers();
+      hazard4Layer.clearLayers();
+      hazardCenters6 = [];
+      hazardCenters4 = [];
+
+      accidentsInjury.forEach(a => {
+        const inC1 = showH1 && a.cluster6 && a.cluster6 > 0;
+        const inC2 = showH2 && a.cluster4 && a.cluster4 > 0;
+        if (!inC1 && !inC2) return;
+
+        let color = "#ef4444";
+        let fill = "#ef4444";
+        if (!inC1 && inC2) { color = "#ea580c"; fill = "#f97316"; }
+
+        let extra = "";
+        if (inC1 && inC2) {
+          extra = "<strong>Opasno mjesto:</strong> kriterij 1 (≥ 6 SN) i kriterij 2 (≥ 4 istog tipa)";
+        } else if (inC1) {
+          extra = "<strong>Opasno mjesto:</strong> kriterij 1 (≥ 6 SN)";
+        } else if (inC2) {
+          extra = "<strong>Opasno mjesto:</strong> kriterij 2 (≥ 4 SN istog tipa)";
+        }
+
+        L.circleMarker([a.lat, a.lon], {
+          radius: 7,
+          color,
+          fillColor: fill,
+          fillOpacity: 0.95,
+          weight: 1.5,
+        })
+        .bindPopup(buildAccidentPopup(a, extra))
+        .addTo(candidateAccidentsLayer);
+      });
+
+      if (showH1) {
+        const clusters6 = summarizeClusters(accidentsInjury, "cluster6");
+        hazardCenters6 = clusters6;
+        clusters6.forEach((cl, idx) => {
+          L.circleMarker([cl.centerLat, cl.centerLon], {
+            radius: 11,
+            color: "#000000",
+            fillColor: "#000000",
+            fillOpacity: 0.95,
+            weight: 2,
+          })
+          .bindPopup(buildHazardPopup(cl, idx, "K1"))
+          .addTo(hazard6Layer);
+        });
+      }
+
+      if (showH2) {
+        const clusters4 = summarizeClusters(accidentsInjury, "cluster4");
+        hazardCenters4 = clusters4;
+        clusters4.forEach((cl, idx) => {
+          L.circleMarker([cl.centerLat, cl.centerLon], {
+            radius: 11,
+            color: "#4c1d95",
+            fillColor: "#4c1d95",
+            fillOpacity: 0.95,
+            weight: 2,
+          })
+          .bindPopup(buildHazardPopup(cl, idx, "K2"))
+          .addTo(hazard4Layer);
+        });
+      }
+
+      rebuildJumpOptions();
+    }
+
+    function updateHeatmap() {
+      if (!heatLayer) {
+        heatLayer = L.heatLayer([], {
+          radius: 45,
+          blur: 30,
+          maxZoom: 18
+        });
+      }
+      const pts = accidents.map(a => [
+        a.lat,
+        a.lon,
+        a.injuryTotal > 0 ? 1.0 : 0.6
+      ]);
+      heatLayer.setLatLngs(pts);
+      if (toggleHeat.checked && pts.length > 0) {
+        heatLayer.addTo(map);
+      } else if (map.hasLayer(heatLayer)) {
+        map.removeLayer(heatLayer);
+      }
+    }
+
+    function applyFiltersAndRunDbscan() {
+      const dateFrom = fDateFrom.value ? new Date(fDateFrom.value) : null;
+      const dateTo   = fDateTo.value   ? new Date(fDateTo.value)   : null;
+      const dowVal   = fDow.value ? parseInt(fDow.value,10) : null;
+      const hFrom    = fHourFrom.value !== "" ? Number(fHourFrom.value) : null;
+      const hTo      = fHourTo.value   !== "" ? Number(fHourTo.value)   : null;
+      const dnVal    = fDayNight.value || null;
+
+      accidents = accidentsAll.filter(a => {
+        if (dateFrom && (!a.dateObj || a.dateObj < dateFrom)) return false;
+        if (dateTo && (!a.dateObj || a.dateObj > dateTo)) return false;
+
+        if (dowVal !== null) {
+          if (a.dowIndex == null || a.dowIndex !== dowVal) return false;
+        }
+
+        if (hFrom !== null) {
+          if (a.hour == null || a.hour < hFrom) return false;
+        }
+        if (hTo !== null) {
+          if (a.hour == null || a.hour > hTo) return false;
+        }
+
+        if (dnVal && a.dayNight !== dnVal) return false;
+
+        function eqSel(sel, colName) {
+          if (!sel.value) return true;
+          return (a.raw[colName] || "").toString() === sel.value;
+        }
+
+        if (!eqSel(fPodrucje, "Područje")) return false;
+        if (!eqSel(fTipPuta, "Tip puta")) return false;
+        if (!eqSel(fKatPuta, "Kategorija puta")) return false;
+        if (!eqSel(fHorizGeo, "Horizontalna geometrija")) return false;
+        if (!eqSel(fVertGeo, "Vertikalna geometrija")) return false;
+        if (!eqSel(fTipRask, "Tip raskrsnice")) return false;
+        if (!eqSel(fTipPrel, "Tip prelaza")) return false;
+        if (!eqSel(fVremenske, "Vremenske prilike")) return false;
+        if (!eqSel(fKolovoz, "Stanje kolovoza")) return false;
+        if (!eqSel(fPjesaci, "Pješačka površina")) return false;
+        if (!eqSel(fRasvjeta, "Rasvjeta")) return false;
+
+        const minP = fMinPovr.value !== "" ? Number(fMinPovr.value) : null;
+        const maxP = fMaxPovr.value !== "" ? Number(fMaxPovr.value) : null;
+        if (minP !== null && a.injuryTotal < minP) return false;
+        if (maxP !== null && a.injuryTotal > maxP) return false;
+
+        const minM = fMinMrtvi.value !== "" ? Number(fMinMrtvi.value) : null;
+        const maxM = fMaxMrtvi.value !== "" ? Number(fMaxMrtvi.value) : null;
+        if (minM !== null && a.deaths < minM) return false;
+        if (maxM !== null && a.deaths > maxM) return false;
+
+        if (fUc.value) {
+          const needle = fUc.value.toLowerCase();
+          const hay = (a.participantsText || "").toLowerCase();
+          if (!hay.includes(needle)) return false;
+        }
+        return true;
+      });
+
+      accidents.forEach(a => { a.cluster6 = 0; a.cluster4 = 0; });
+
+      accidentsInjury = accidents.filter(a => a.injuryTotal > 0);
+
+      drawBaseAccidents();
+
+      if (accidentsInjury.length > 0) {
+        const pts1 = accidentsInjury.map(a => ({ lat: a.lat, lon: a.lon }));
+        const { labels: labels6 } = dbscan(pts1, EPS_6, MINPTS_6);
+        labels6.forEach((lab, i) => { if (lab > 0) accidentsInjury[i].cluster6 = lab; });
+
+        const byType = new Map();
+        accidentsInjury.forEach((a, idx) => {
+          const k = a.typeKey || "unknown";
+          if (!byType.has(k)) byType.set(k, []);
+          byType.get(k).push(idx);
+        });
+
+        let nextCluster4Id = 1;
+        byType.forEach(idxList => {
+          if (idxList.length < MINPTS_4) return;
+          const pts = idxList.map(i => ({ lat: accidentsInjury[i].lat, lon: accidentsInjury[i].lon }));
+          const { labels } = dbscan(pts, EPS_4, MINPTS_4);
+          const localToGlobal = {};
+          labels.forEach((lab, localIdx) => {
+            if (lab <= 0) return;
+            if (!localToGlobal[lab]) localToGlobal[lab] = nextCluster4Id++;
+            const globalIdx = idxList[localIdx];
+            accidentsInjury[globalIdx].cluster4 = localToGlobal[lab];
+          });
+        });
+      }
+
+      drawDbscanResults();
+      updateHeatmap();
+      updateStatsPanel();
+      statsDataCache = null;
+    }
+
+    function populateSelectOptions() {
+      function collectUnique(colName) {
+        const set = new Set();
+        accidentsAll.forEach(a => {
+          const v = (a.raw[colName] || "").toString().trim();
+          if (v) set.add(v);
+        });
+        return Array.from(set).sort();
+      }
+      function fillSelect(sel, values) {
+        values.forEach(v => {
+          const o = document.createElement("option");
+          o.value = v;
+          o.textContent = v;
+          sel.appendChild(o);
+        });
+      }
+
+      fillSelect(fPodrucje, collectUnique("Područje"));
+      fillSelect(fTipPuta, collectUnique("Tip puta"));
+      fillSelect(fKatPuta, collectUnique("Kategorija puta"));
+      fillSelect(fHorizGeo, collectUnique("Horizontalna geometrija"));
+      fillSelect(fVertGeo, collectUnique("Vertikalna geometrija"));
+      fillSelect(fTipRask, collectUnique("Tip raskrsnice"));
+      fillSelect(fTipPrel, collectUnique("Tip prelaza"));
+      fillSelect(fVremenske, collectUnique("Vremenske prilike"));
+      fillSelect(fKolovoz, collectUnique("Stanje kolovoza"));
+      fillSelect(fPjesaci, collectUnique("Pješačka površina"));
+      fillSelect(fRasvjeta, collectUnique("Rasvjeta"));
+    }
+
+    function computeStats() {
+      const acc = accidents;
+      if (!acc || acc.length === 0) return null;
+      const summary = [];
+
+      const typeMap = {};
+      acc.forEach(a => {
+        const key = a.typeRaw || "N/A";
+        typeMap[key] = (typeMap[key] || 0) + 1;
+      });
+      const typeLabels = Object.keys(typeMap).sort();
+      const typeData = typeLabels.map(k => typeMap[k]);
+      typeLabels.forEach((lab,i) => summary.push({group:"Tip nezgode",label:lab,value:typeData[i]}));
+
+      const dowCounts = [0,0,0,0,0,0,0];
+      acc.forEach(a => {
+        if (a.dowIndex == null) return;
+        dowCounts[a.dowIndex-1]++;
+      });
+      const dowLabels = DOW_NAMES.slice(1);
+      dowLabels.forEach((lab,i) => summary.push({group:"Dan u sedmici",label:lab,value:dowCounts[i]}));
+
+      const hourCounts = new Array(24).fill(0);
+      const hourLabels = [];
+      for (let h=0; h<24; h++) {
+        const hStr = h.toString().padStart(2,"0");
+        const h2Str = ((h+1)%24).toString().padStart(2,"0");
+        hourLabels.push(`${hStr}:00–${h2Str}:00`);
+      }
+      acc.forEach(a => {
+        if (a.hour == null) return;
+        hourCounts[a.hour]++;
+      });
+      hourLabels.forEach((lab,i)=>summary.push({group:"Sat u danu",label:lab,value:hourCounts[i]}));
+
+      const dayNightCounts = {"Dan":0,"Noć":0};
+      acc.forEach(a => {
+        const dn = a.dayNight || "Dan";
+        dayNightCounts[dn] = (dayNightCounts[dn] || 0) + 1;
+      });
+      const dioDanaLabels = Object.keys(dayNightCounts);
+      const dioDanaData = dioDanaLabels.map(k=>dayNightCounts[k]);
+      dioDanaLabels.forEach((lab,i)=>summary.push({group:"Dan / Noć",label:lab,value:dioDanaData[i]}));
+
+      function cat(colName, groupName) {
+        const m = {};
+        acc.forEach(a => {
+          const v = (a.raw[colName] || "").toString().trim();
+          if (!v) return;
+          m[v] = (m[v] || 0) + 1;
+        });
+        const labels = Object.keys(m).sort();
+        const data = labels.map(k=>m[k]);
+        labels.forEach((lab,i)=>summary.push({group:groupName,label:lab,value:data[i]}));
+        return {labels,data};
+      }
+
+      const tipPuta = cat("Tip puta","Tip puta");
+      const katPuta = cat("Kategorija puta","Kategorija puta");
+      const kolovoz = cat("Stanje kolovoza","Stanje kolovoza");
+
+      let sumDeaths=0,sumSerious=0,sumMinor=0,sumInj=0;
+      acc.forEach(a=>{
+        sumDeaths += a.deaths;
+        sumSerious += a.serious;
+        sumMinor += a.minor;
+        sumInj += a.injuryTotal;
+      });
+      const injLabels = ["Ukupno povrijeđenih","Teško povrijeđeni","Lako povrijeđeni","Smrtno stradali"];
+      const injData = [sumInj,sumSerious,sumMinor,sumDeaths];
+      injLabels.forEach((lab,i)=>summary.push({group:"Povrede/poginuli",label:lab,value:injData[i]}));
+
+      const partBuckets={"0":0,"1":0,"2":0,"3":0,"4":0,"5+":0};
+      acc.forEach(a=>{
+        const c=a.participantsCount||0;
+        if (c<=0) partBuckets["0"]++;
+        else if (c===1) partBuckets["1"]++;
+        else if (c===2) partBuckets["2"]++;
+        else if (c===3) partBuckets["3"]++;
+        else if (c===4) partBuckets["4"]++;
+        else partBuckets["5+"]++;
+      });
+      const partLabels = Object.keys(partBuckets);
+      const partData = partLabels.map(k=>partBuckets[k]);
+      partLabels.forEach((lab,i)=>summary.push({group:"Broj učesnika",label:lab,value:partData[i]}));
+
+      const vehTotals = {};
+      acc.forEach(a=>{
+        if (!a.vehicleCounts) return;
+        Object.entries(a.vehicleCounts).forEach(([k,v])=>{
+          vehTotals[k]=(vehTotals[k]||0)+v;
+        });
+      });
+      const vehLabels = Object.keys(vehTotals).sort();
+      const vehData = vehLabels.map(k=>vehTotals[k]);
+      vehLabels.forEach((lab,i)=>summary.push({group:"Vrste vozila/učesnika",label:lab,value:vehData[i]}));
+
+      return {
+        typeLabels, typeData,
+        dowLabels, dowData:dowCounts,
+        hourLabels, hourData:hourCounts,
+        dioDanaLabels, dioDanaData,
+        tipPutaLabels:tipPuta.labels, tipPutaData:tipPuta.data,
+        katPutaLabels:katPuta.labels, katPutaData:katPuta.data,
+        kolovozLabels:kolovoz.labels, kolovozData:kolovoz.data,
+        injLabels, injData,
+        partLabels, partData,
+        vehLabels, vehData,
+        summary
+      };
+    }
+
+    function renderStatsChart(metricKey) {
+      if (!statsDataCache) return;
+      const s = statsDataCache;
+      let labels=[],data=[],type="bar",label="Broj nezgoda";
+
+      if (metricKey==="tip") { labels=s.typeLabels;data=s.typeData;label="Broj nezgoda po tipu"; }
+      else if (metricKey==="dow"){labels=s.dowLabels;data=s.dowData;label="Nezgode po danu u sedmici"; }
+      else if (metricKey==="hour"){labels=s.hourLabels;data=s.hourData;type="line";label="Nezgode po satu"; }
+      else if (metricKey==="tipputa"){labels=s.tipPutaLabels;data=s.tipPutaData;label="Nezgode po tipu puta"; }
+      else if (metricKey==="katputa"){labels=s.katPutaLabels;data=s.katPutaData;label="Nezgode po kategoriji puta"; }
+      else if (metricKey==="diodana"){labels=s.dioDanaLabels;data=s.dioDanaData;type="pie";label="Dan / Noć"; }
+      else if (metricKey==="kolovoz"){labels=s.kolovozLabels;data=s.kolovozData;type="pie";label="Stanje kolovoza"; }
+      else if (metricKey==="povrede"){labels=s.injLabels;data=s.injData;label="Povrede i poginuli"; }
+      else if (metricKey==="ucesnici"){labels=s.partLabels;data=s.partData;label="Broj učesnika"; }
+      else if (metricKey==="vozila"){labels=s.vehLabels;data=s.vehData;label="Vrste vozila/učesnika"; }
+
+      if (statsChart) statsChart.destroy();
+      const ctx=document.getElementById("stats-chart").getContext("2d");
+
+      if (type==="pie"){
+        statsChart=new Chart(ctx,{
+          type:"pie",
+          data:{
+            labels,
+            datasets:[{
+              label,
+              data,
+              backgroundColor:[
+                "rgba(248,113,113,0.8)",
+                "rgba(251,146,60,0.8)",
+                "rgba(52,211,153,0.8)",
+                "rgba(59,130,246,0.8)",
+                "rgba(139,92,246,0.8)",
+                "rgba(234,179,8,0.8)",
+                "rgba(96,165,250,0.8)"
+              ]
+            }]
+          },
+          options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            plugins:{
+              legend:{position:"bottom",labels:{color:"#e5e7eb",font:{size:11}}}
+            }
+          }
+        });
+      } else {
+        statsChart=new Chart(ctx,{
+          type,
+          data:{
+            labels,
+            datasets:[{
+              label,
+              data,
+              borderWidth:1,
+              backgroundColor:type==="line"
+                ? "rgba(248,113,113,0.3)"
+                : "rgba(248,113,113,0.8)",
+              borderColor:"rgba(248,113,113,1)"
+            }]
+          },
+          options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            scales:{
+              x:{ticks:{color:"#e5e7eb",font:{size:10}},grid:{color:"#111827"}},
+              y:{beginAtZero:true,ticks:{color:"#e5e7eb"},grid:{color:"#111827"}}
+            },
+            plugins:{legend:{display:false}}
+          }
+        });
+      }
+    }
+
+    function openStatsModal() {
+      const stats = computeStats();
+      if (!stats) { alert("Nema nezgoda u trenutnom filteru."); return; }
+      statsDataCache = stats;
+      statsSummaryRows = stats.summary;
+      currentMetric = "tip";
+      setActiveMetricButton(currentMetric);
+      renderStatsChart(currentMetric);
+      statsModal.style.display = "flex";
+    }
+    function closeStatsModal(){statsModal.style.display="none";}
+
+    function setActiveMetricButton(metric) {
+      const buttons = statsMetricButtons.querySelectorAll(".stats-metric-btn");
+      buttons.forEach(b => b.classList.toggle("active", b.dataset.metric === metric));
+    }
+
+    function csvEscape(v){
+      if(v===null||v===undefined)return"";
+      const s=v.toString();
+      if(s.includes(";")||s.includes("\"")||s.includes("\n")){
+        return '"' + s.replace(/"/g,'""') + '"';
+      }
+      return s;
+    }
+
+    function exportAccidentsCsv(){
+      if(!accidents||accidents.length===0){alert("Nema nezgoda za export.");return;}
+      const headers = csvHeadersAll && csvHeadersAll.length ? csvHeadersAll : Object.keys(accidents[0].raw||{});
+      const rows=[];
+      rows.push(headers.map(csvEscape).join(";"));
+      accidents.forEach(a=>{
+        const r=a.raw||{};
+        rows.push(headers.map(h=>csvEscape(r[h])).join(";"));
+      });
+      const blob=new Blob([rows.join("\n")],{type:"text/csv;charset=utf-8;"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;a.download="SN_filtrirano.csv";
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function exportStatsCsv(){
+      if(!statsSummaryRows||statsSummaryRows.length===0){
+        const stats=computeStats();
+        if(!stats){alert("Nema nezgoda za statistiku.");return;}
+        statsSummaryRows=stats.summary;
+      }
+      const rows=[];
+      rows.push(["Grupa","Kategorija","Vrijednost"].map(csvEscape).join(";"));
+      statsSummaryRows.forEach(r=>{
+        rows.push([csvEscape(r.group),csvEscape(r.label),csvEscape(r.value)].join(";"));
+      });
+      const blob=new Blob([rows.join("\n")],{type:"text/csv;charset=utf-8;"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;a.download="SN_statistika.csv";
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function saveChartAs(type){
+      const canvas=document.getElementById("stats-chart");
+      if(!canvas){alert("Graf nije dostupan.");return;}
+      if(type==="png"||type==="jpg"){
+        const mime = type==="png" ? "image/png" : "image/jpeg";
+        const dataURL=canvas.toDataURL(mime);
+        const a=document.createElement("a");
+        a.href=dataURL;
+        a.download="SN_statistika."+type;
+        document.body.appendChild(a);a.click();document.body.removeChild(a);
+      }else if(type==="pdf"){
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF("l","mm","a4");
+        const imgData = canvas.toDataURL("image/png");
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pageWidth - 20;
+        const imgHeight = (canvas.height / canvas.width) * imgWidth;
+        pdf.addImage(imgData,"PNG",10,(pageHeight-imgHeight)/2,imgWidth,imgHeight);
+        pdf.save("SN_statistika.pdf");
+      }
+    }
+
+    function resetMeasurement(){
+      measuringActive=true;
+      measurePoints=[];
+      if(measurePolyline){map.removeLayer(measurePolyline);measurePolyline=null;}
+      measureMarkers.forEach(m=>map.removeLayer(m));
+      measureMarkers=[];
+      measureInfo.textContent="Mjerenje aktivno: klikni na mapu da dodaš tačke rute.";
+    }
+
+    function onMapClickMeasure(e){
+      if(!measuringActive)return;
+      const latlng=e.latlng;
+      measurePoints.push(latlng);
+      const marker=L.circleMarker(latlng,{
+        radius:4,color:"#f9fafb",fillColor:"#0f172a",fillOpacity:1,weight:1
+      }).addTo(map);
+      measureMarkers.push(marker);
+      if(measurePolyline)measurePolyline.setLatLngs(measurePoints);
+      else measurePolyline=L.polyline(measurePoints,{color:"#facc15",weight:2}).addTo(map);
+
+      let total=0;
+      for(let i=1;i<measurePoints.length;i++){
+        const p1=measurePoints[i-1];const p2=measurePoints[i];
+        total+=haversineMeters(p1.lat,p1.lng,p2.lat,p2.lng);
+      }
+      if(total<1000)measureInfo.textContent=`Ukupna dužina: ${total.toFixed(1)} m`;
+      else measureInfo.textContent=`Ukupna dužina: ${(total/1000).toFixed(3)} km`;
+    }
+
+    async function ensureOpcineLoaded(){
+      if(opcineDataLoaded){
+        if(toggleKanton.checked)cantonBoundaryLayer.addTo(map);
+        else map.removeLayer(cantonBoundaryLayer);
+        return;
+      }
+      try{
+        const resp=await fetch("opcine.geojson");
+        if(!resp.ok) throw new Error("opcine.geojson nije pronađen");
+        const gj=await resp.json();
+
+        cantonBoundaryLayer=L.geoJSON(gj,{
+          pane:"adminPane",
+          style:{
+            color:"#22c55e",
+            weight:2.2,
+            fillColor:"#22c55e",
+            fillOpacity:0.08
+          }
+        });
+
+        opcinaLayers={};
+        muniBoundsByName={};
+        opcineListDiv.innerHTML="";
+
+        gj.features.forEach((f,idx)=>{
+          const props=f.properties||{};
+          const name = props.name || props.NAZIV || props.Naziv || `Općina ${idx+1}`;
+          const layer=L.geoJSON(f,{
+            pane:"adminPane",
+            style:{
+              color:"#f97316",
+              weight:1.4,
+              dashArray:"4 3",
+              fillColor:"#f97316",
+              fillOpacity:0.05
+            }
+          });
+          opcinaLayers[name]=layer;
+          muniBoundsByName[name]=layer.getBounds();
+
+          const lbl=document.createElement("label");
+          const cb=document.createElement("input");
+          cb.type="checkbox";cb.checked=false;cb.dataset.opcina=name;
+          cb.addEventListener("change",()=>{if(cb.checked)layer.addTo(map);else map.removeLayer(layer);});
+          lbl.appendChild(cb);
+          const span=document.createElement("span");span.textContent=name;
+          lbl.appendChild(span);
+          opcineListDiv.appendChild(lbl);
+        });
+
+        opcineDataLoaded=true;
+        rebuildJumpOptions();
+        if(toggleKanton.checked)cantonBoundaryLayer.addTo(map);
+        setStatus("Granice općina učitane iz opcine.geojson.");
+      }catch(err){
+        console.error(err);
+        setStatus("Greška pri učitavanju fajla opcine.geojson.",true);
+        opcineListDiv.innerHTML='<span style="font-size:11px;color:#fca5a5;">Greška pri učitavanju općina.</span>';
+      }
+    }
+
+    async function ensureRoadsLoaded(){
+      if(roadsLoaded){
+        if(toggleRoads.checked)roadsLayer.addTo(map);
+        else map.removeLayer(roadsLayer);
+        return;
+      }
+      try{
+        setStatus("Učitavam roads_ks.geojson...");
+        const resp=await fetch("roads_ks.geojson");
+        if(!resp.ok) throw new Error("roads_ks.geojson nije pronađen");
+        const gj=await resp.json();
+        roadsLayer=L.geoJSON(gj,{
+          pane:"roadsPane",
+          style:{color:"#6b7280",weight:1,opacity:0.9}
+        });
+        roadsLoaded=true;
+        if(toggleRoads.checked)roadsLayer.addTo(map);
+        setStatus("roads_ks.geojson učitan.");
+      }catch(err){
+        console.error(err);
+        setStatus("Greška pri učitavanju roads_ks.geojson.",true);
+      }
+    }
+
+    function isBoundsLatLngReasonable(b) {
+      if (!b) return false;
+      const south = b.getSouth();
+      const north = b.getNorth();
+      const west = b.getWest();
+      const east = b.getEast();
+      if (south < -90 || north > 90 || west < -180 || east > 180) return false;
+      return true;
+    }
+
+    function fitToMunicipality(name) {
+      const b = muniBoundsByName[name];
+      if (b && isBoundsLatLngReasonable(b)) {
+        map.fitBounds(b,{padding:[20,20]});
+        return;
+      }
+      const accInMun = accidentsAll.filter(a => {
+        const area = (a.raw["Područje"] || "").toString();
+        return area.includes(name);
+      });
+      if (accInMun.length > 0) {
+        const bounds = L.latLngBounds(accInMun.map(a=>[a.lat,a.lon]));
+        map.fitBounds(bounds,{padding:[20,20]});
+      }
+    }
+
+    async function loadAndInit(){
+      try{
+        const resp=await fetch(CSV_URL);
+        if(!resp.ok) throw new Error("CSV nije pronađen: "+CSV_URL);
+        const text=await resp.text();
+
+        const parsed=Papa.parse(text,{
+          header:true,
+          dynamicTyping:true,
+          skipEmptyLines:true
+        });
+
+        const rows=parsed.data;
+        csvHeadersAll = parsed.meta && parsed.meta.fields ? parsed.meta.fields : [];
+
+        const vehicleCols=[
+          "Putnički automobil","Pješak","Romobil","Bicikl","Motocikl",
+          "Lako teretno vozilo","Teško teretno vozilo","Autobus","Traktor","Ostalo"
+        ];
+
+        accidentsAll=[];
+        rows.forEach((row,idx)=>{
+          const lat=parseFloat(row["Latituda"]);
+          const lon=parseFloat(row["Longituda"]);
+          if(!isFinite(lat)||!isFinite(lon))return;
+
+          const rawType=row["Tip SN"]||row["Tip saobraćajne nezgode"]||"";
+          const typeKey=normalizeType(rawType);
+
+          const deaths=Number(row["Broj poginulih osoba"]||0);
+          const serious=Number(row["Broj teško povrijeđenih osoba"]||0);
+          const minor=Number(row["Broj lakše povrijeđenih osoba"]||0);
+          const injuryTotal=deaths+serious+minor;
+
+          let participantsCount=0;
+          let participantsLabels=[];
+          const vehicleCounts={};
+          vehicleCols.forEach(col=>{
+            if(!(col in row))return;
+            const v=row[col];
+            if(typeof v==="number"&&!isNaN(v)&&v>0){
+              participantsCount+=v;
+              participantsLabels.push(col);
+              vehicleCounts[col]=(vehicleCounts[col]||0)+v;
+            }
+          });
+          const participantsText=participantsLabels.join(", ");
+
+          const dateObj = parseDateFlexible(row["Datum"]);
+          let dowIndex=null, dowLabel="";
+          if (dateObj) {
+            const dIndex=dateObj.getDay(); // 0=Sun
+            dowIndex = dIndex===0 ? 7 : dIndex;
+            dowLabel = DOW_NAMES[dowIndex];
+          }
+
+          const timeStr = row["Vrijeme"] || "";
+          const hour = extractHourFromTimeStr(timeStr);
+          let dayNight="Dan";
+          if (hour !== null) {
+            dayNight = (hour >= 6 && hour < 18) ? "Dan" : "Noć";
+          }
+
+          accidentsAll.push({
+            id:idx,
+            raw:row,
+            lat,lon,
+            typeRaw:rawType,
+            typeKey,
+            deaths,serious,minor,injuryTotal,
+            participantsText,
+            participantsCount,
+            vehicleCounts,
+            dateObj,
+            dowIndex,
+            dowLabel,
+            hour,
+            dayNight,
+            cluster6:0,cluster4:0
+          });
+        });
+
+        if(accidentsAll.length===0){
+          setStatus("CSV učitan, ali nema važećih nezgoda.",true);
+          return;
+        }
+
+        setStatus(`CSV učitan: ${accidentsAll.length} saobraćajnih nezgoda.`);
+        populateSelectOptions();
+
+        accidents=accidentsAll.slice();
+        applyFiltersAndRunDbscan();
+
+        const filterInputs=[
+          fDateFrom,fDateTo,fDow,fHourFrom,fHourTo,fDayNight,
+          fPodrucje,fTipPuta,fKatPuta,fHorizGeo,fVertGeo,
+          fTipRask,fTipPrel,fVremenske,fKolovoz,fPjesaci,fRasvjeta,
+          fMinPovr,fMaxPovr,fMinMrtvi,fMaxMrtvi,fUc
+        ];
+        filterInputs.forEach(el=>{
+          el.addEventListener("change",applyFiltersAndRunDbscan);
+          el.addEventListener("input",applyFiltersAndRunDbscan);
+        });
+
+        ensureOpcineLoaded();
+        ensureRoadsLoaded();
+
+      }catch(err){
+        console.error("Greška:",err);
+        setStatus("Greška pri učitavanju ili obradi CSV podataka.",true);
+      }
+    }
+
+    const toggleH1El = toggleH1;
+    const toggleH2El = toggleH2;
+
+    toggleH1El.addEventListener("change",()=>{showH1=toggleH1El.checked;drawDbscanResults();updateStatsPanel();});
+    toggleH2El.addEventListener("change",()=>{showH2=toggleH2El.checked;drawDbscanResults();updateStatsPanel();});
+    toggleHeat.addEventListener("change",updateHeatmap);
+    toggleRoads.addEventListener("change",ensureRoadsLoaded);
+    toggleKanton.addEventListener("change",ensureOpcineLoaded);
+
+    jumpSelect.addEventListener("change",()=>{
+      const v=jumpSelect.value;
+      if(!v)return;
+      if(v==="all"){
+        if(accidents.length>0){
+          const b=L.latLngBounds(accidents.map(a=>[a.lat,a.lon]));
+          map.fitBounds(b,{padding:[20,20]});
+        }
+      }else if(v==="core"){
+        map.setView([43.858,18.413],14);
+      }else if(v.startsWith("muni:")){
+        const name=v.slice(5);
+        fitToMunicipality(name);
+      }else if(v.startsWith("h1:")){
+        const idx=parseInt(v.slice(3),10);
+        const h=hazardCenters6[idx];
+        if(h)map.setView([h.centerLat,h.centerLon],16);
+      }else if(v.startsWith("h2:")){
+        const idx=parseInt(v.slice(3),10);
+        const h=hazardCenters4[idx];
+        if(h)map.setView([h.centerLat,h.centerLon],16);
+      }
+    });
+
+    btnClearFilters.addEventListener("click",()=>{
+      [fDateFrom,fDateTo,fHourFrom,fHourTo].forEach(el=>el.value="");
+      fDow.value="";
+      fDayNight.value="";
+
+      [fMinPovr,fMaxPovr,fMinMrtvi,fMaxMrtvi,fUc].forEach(el=>el.value="");
+      [fPodrucje,fTipPuta,fKatPuta,fHorizGeo,fVertGeo,fTipRask,fTipPrel,
+       fVremenske,fKolovoz,fPjesaci,fRasvjeta].forEach(sel=>sel.value="");
+      applyFiltersAndRunDbscan();
+    });
+
+    btnMeasure.addEventListener("click",resetMeasurement);
+    btnShowStats.addEventListener("click",openStatsModal);
+    btnShowStats2.addEventListener("click",openStatsModal);
+    btnCloseStats.addEventListener("click",closeStatsModal);
+    statsModal.addEventListener("click",e=>{if(e.target===statsModal)closeStatsModal();});
+
+    statsMetricButtons.addEventListener("click",e=>{
+      const btn = e.target.closest(".stats-metric-btn");
+      if (!btn) return;
+      const metric = btn.dataset.metric;
+      currentMetric = metric;
+      setActiveMetricButton(metric);
+      if (statsDataCache) renderStatsChart(metric);
+    });
+
+    btnExportAccidents.addEventListener("click",exportAccidentsCsv);
+    btnExportStats.addEventListener("click",exportStatsCsv);
+
+    btnSavePng.addEventListener("click",()=>saveChartAs("png"));
+    btnSaveJpg.addEventListener("click",()=>saveChartAs("jpg"));
+    btnSavePdf.addEventListener("click",()=>saveChartAs("pdf"));
+
+    loadAndInit();
+  </script>
+</body>
+</html>
