@@ -517,6 +517,61 @@
       color: #6b7280;
     }
 
+    .haz-acc-table-wrapper {
+  margin-top: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.haz-acc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.haz-acc-table thead {
+  position: sticky;
+  top: 0;
+  background: #e5e7eb;
+  z-index: 1;
+}
+
+.haz-acc-table th,
+.haz-acc-table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.haz-acc-table th {
+  text-align: left;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.haz-acc-table tbody tr:nth-child(even) {
+  background: #f3f4f6;
+}
+
+
+.leaflet-popup-content-wrapper {
+  max-width: 480px !important; /* širi popup okvir */
+}
+
+.leaflet-popup-content {
+  width: 360px !important; /* efektivna širina sadržaja */
+  margin: 10 !important;
+}
+
+
+
+
+
     /* Stats modal */
     #stats-modal {
       position: fixed;
@@ -1562,37 +1617,109 @@
       `;
     }
 
-    function buildHazardPopup(cluster, idx, kriterijLabel) {
-      const lat = cluster.centerLat;
-      const lon = cluster.centerLon;
-      const streetUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lon}`;
-      return `
-        <div class="popup-card">
-          <div class="popup-header">
-            <div class="popup-icon">⚠️</div>
-            <div>
-              <div class="popup-title">Opasno mjesto – ${kriterijLabel} #${idx + 1}</div>
-              <div class="popup-subtitle">
-                ${cluster.totalAccidents} SN • ${cluster.totalInjured} povrijeđenih/poginulih
-              </div>
-            </div>
-          </div>
-          <hr class="popup-separator" />
-          <div class="popup-row"><strong>Dominantni tip SN:</strong> ${cluster.dominantType || "N/A"}</div>
-          <div class="popup-row"><strong>Koordinate centra:</strong> ${lat.toFixed(5)}, ${lon.toFixed(5)}</div>
-          <div class="popup-extra">
-            Klikom na pojedinačne nezgode u okolini dobit ćete detalje o svakoj nezgodi u ovom opasnom mjestu.
-          </div>
-          <div class="popup-footer">
-            <a class="popup-sv-btn" href="${streetUrl}" target="_blank" rel="noopener">
-              <span class="icon">🧭</span>
-              <span>Street View – opasno mjesto</span>
-            </a>
-            <span class="popup-coords">${lat.toFixed(5)}, ${lon.toFixed(5)}</span>
+function buildHazardPopup(cluster, idx, kriterijLabel) {
+  const lat = cluster.centerLat;
+  const lon = cluster.centerLon;
+  const streetUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lon}`;
+
+  // sigurnosna provjera (ako je neko pozove sa starijim objektom)
+  const totalInjuredNoDeaths =
+    typeof cluster.totalInjuredNoDeaths === "number"
+      ? cluster.totalInjuredNoDeaths
+      : (cluster.accidents || []).reduce(
+          (s, a) => s + ((a.injuryTotal || 0) - (a.deaths || 0)),
+          0
+        );
+
+  const totalDeaths =
+    typeof cluster.totalDeaths === "number"
+      ? cluster.totalDeaths
+      : (cluster.accidents || []).reduce(
+          (s, a) => s + (a.deaths || 0),
+          0
+        );
+
+  // tabela svih nezgoda unutar opasnog mjesta
+  let accidentsTableHtml = "";
+  if (cluster.accidents && cluster.accidents.length > 0) {
+    accidentsTableHtml += `
+      <div class="popup-section-title" style="margin-top:8px;">
+        Nezgode u ovom opasnom mjestu
+      </div>
+      <div class="haz-acc-table-wrapper">
+        <table class="haz-acc-table">
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Tip SN</th>
+              <th>Povr.</th>
+              <th>Pog.</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    cluster.accidents.forEach(a => {
+      const r = a.raw || {};
+      const datum = r["Datum"] || "";
+      const tipSn = a.typeRaw || "";
+      const povr = (a.injuryTotal || 0) - (a.deaths || 0);
+      const pog  = a.deaths || 0;
+
+      accidentsTableHtml += `
+        <tr>
+          <td>${datum}</td>
+          <td>${tipSn}</td>
+          <td style="text-align:right;">${povr}</td>
+          <td style="text-align:right;">${pog}</td>
+        </tr>
+      `;
+    });
+
+    accidentsTableHtml += `
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="popup-card">
+      <div class="popup-header">
+        <div class="popup-icon">⚠️</div>
+        <div>
+          <div class="popup-title">Opasno mjesto – ${kriterijLabel} #${idx + 1}</div>
+          <div class="popup-subtitle">
+            ${cluster.totalAccidents} SN • Povrijeđenih: ${totalInjuredNoDeaths} • Poginulih: ${totalDeaths}
           </div>
         </div>
-      `;
-    }
+      </div>
+      <hr class="popup-separator" />
+      <div class="popup-row">
+        <strong>Dominantni tip SN:</strong> ${cluster.dominantType || "N/A"}
+      </div>
+      <div class="popup-row">
+        <strong>Koordinate centra:</strong> ${lat.toFixed(5)}, ${lon.toFixed(5)}
+      </div>
+
+      ${accidentsTableHtml}
+
+      <div class="popup-extra">
+        Svaki red u tabeli predstavlja pojedinačnu nezgodu koja ulazi u definiciju ovog opasnog mjesta,
+        uz prikaz broja povrijeđenih i poginulih u toj saobraćajnoj nezgodi.
+      </div>
+
+      <div class="popup-footer">
+        <a class="popup-sv-btn" href="${streetUrl}" target="_blank" rel="noopener">
+          <span class="icon">🧭</span>
+          <span>Street View – opasno mjesto</span>
+        </a>
+        <span class="popup-coords">${lat.toFixed(5)}, ${lon.toFixed(5)}</span>
+      </div>
+    </div>
+  `;
+}
+
 
     function initMap() {
       map = L.map("map").setView([43.86, 18.41], 12);
@@ -1825,53 +1952,61 @@
     }
 
 
-    function summarizeClusters(accList, key) {
-      const m = new Map();
-      accList.forEach(a => {
-        const cid = a[key];
-        if (!cid || cid <= 0) return;
-        if (!m.has(cid)) m.set(cid, []);
-        m.get(cid).push(a);
-      });
+function summarizeClusters(accList, key) {
+  const m = new Map();
+  accList.forEach(a => {
+    const cid = a[key];
+    if (!cid || cid <= 0) return;
+    if (!m.has(cid)) m.set(cid, []);
+    m.get(cid).push(a);
+  });
 
-      const out = [];
-      m.forEach((list, cid) => {
-        const latSum = list.reduce((s, a) => s + a.lat, 0);
-        const lonSum = list.reduce((s, a) => s + a.lon, 0);
-        const centerLat = latSum / list.length;
-        const centerLon = lonSum / list.length;
-        const totalInj = list.reduce((s, a) => s + a.injuryTotal, 0);
+  const out = [];
+  m.forEach((list, cid) => {
+    const latSum = list.reduce((s, a) => s + a.lat, 0);
+    const lonSum = list.reduce((s, a) => s + a.lon, 0);
+    const centerLat = latSum / list.length;
+    const centerLon = lonSum / list.length;
 
-        const typeCounts = {};
-        const labels = {};
-        list.forEach(a => {
-          const k = a.typeKey || "unknown";
-          typeCounts[k] = (typeCounts[k] || 0) + 1;
-          if (!labels[k] && a.typeRaw) labels[k] = a.typeRaw;
-        });
+    // ukupno povrijeđenih (bez poginulih) i ukupno poginulih u klasteru
+    const totalDeaths = list.reduce((s, a) => s + (a.deaths || 0), 0);
+    const totalInjuredNoDeaths = list.reduce(
+      (s, a) => s + ((a.injuryTotal || 0) - (a.deaths || 0)),
+      0
+    );
 
-        let dominantKey = "";
-        let maxCount = 0;
-        Object.entries(typeCounts).forEach(([k, c]) => {
-          if (c > maxCount) {
-            maxCount = c;
-            dominantKey = k;
-          }
-        });
-        const dominantLabel = labels[dominantKey] || dominantKey || "N/A";
+    const typeCounts = {};
+    const labels = {};
+    list.forEach(a => {
+      const k = a.typeKey || "unknown";
+      typeCounts[k] = (typeCounts[k] || 0) + 1;
+      if (!labels[k] && a.typeRaw) labels[k] = a.typeRaw;
+    });
 
-        out.push({
-          id: cid,
-          centerLat,
-          centerLon,
-          accidents: list,
-          totalAccidents: list.length,
-          totalInjured: totalInj,
-          dominantType: dominantLabel
-        });
-      });
-      return out;
-    }
+    let dominantKey = "";
+    let maxCount = 0;
+    Object.entries(typeCounts).forEach(([k, c]) => {
+      if (c > maxCount) {
+        maxCount = c;
+        dominantKey = k;
+      }
+    });
+    const dominantLabel = labels[dominantKey] || dominantKey || "N/A";
+
+    out.push({
+      id: cid,
+      centerLat,
+      centerLon,
+      accidents: list,
+      totalAccidents: list.length,
+      totalInjuredNoDeaths,
+      totalDeaths,
+      dominantType: dominantLabel
+    });
+  });
+  return out;
+}
+
 
     function rebuildJumpOptions() {
       const sel = jumpSelect;
